@@ -11,7 +11,10 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: "v4", auth });
 
 export async function appendAuditLogRow(input) {
+  const timestamp = new Date().toLocaleString();
+
   const row = [
+    timestamp,
     input["Test ID"] || "",
     input["Cluster #"] || "",
     input["Cluster Name"] || "",
@@ -31,6 +34,9 @@ export async function appendAuditLogRow(input) {
     input["sub_type"] || "",
     input["Notes/Remediation Needed"] || "",
   ];
+
+  console.log("🕒 Timestamp value:", timestamp);
+  console.log("📝 Row being written to Google Sheets:", row);
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.SHEET_ID,
