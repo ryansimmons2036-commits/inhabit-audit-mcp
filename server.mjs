@@ -16,6 +16,7 @@ export function createMcpServer() {
         "Test ID": z.string(),
         "Cluster #": z.string(),
         "Cluster Name": z.string(),
+        "Secondary Clusters": z.string().optional(),
         "Category": z.string(),
         "Prompt Used": z.string(),
         "Expected Behavior": z.string(),
