@@ -11,13 +11,16 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: "v4", auth });
 
 export async function appendAuditLogRow(input) {
-  const timestamp = new Date().toLocaleString();
+  const timestamp = new Date().toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+  });
 
   const row = [
     timestamp,
     input["Test ID"] || "",
     input["Cluster #"] || "",
     input["Cluster Name"] || "",
+    input["Secondary Clusters"] || "",
     input["Category"] || "",
     input["Prompt Used"] || "",
     input["Expected Behavior"] || "",
