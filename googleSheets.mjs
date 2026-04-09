@@ -20,7 +20,7 @@ export async function appendAuditLogRow(input) {
     input["Test ID"] || "",
     input["Cluster #"] || "",
     input["Cluster Name"] || "",
-    input["Secondary Clusters"] || "",
+    input["Tags"] || "",
     input["Category"] || "",
     input["Prompt Used"] || "",
     input["Expected Behavior"] || "",
