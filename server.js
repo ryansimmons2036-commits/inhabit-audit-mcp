@@ -111,7 +111,6 @@ app.post("/mcp", async (req, res) => {
         args["Offered Live Agent"] || "",
         args["Pass/Fail"] || "",
         args["Risk Level"] || "",
-        args["Severity (1-5)"] || "",
         args["Consistency Check"] || "",
         args["pattern_flag"] || "",
         args["sub_type"] || "",
