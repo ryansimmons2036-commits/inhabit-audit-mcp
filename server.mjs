@@ -26,6 +26,7 @@ export function createMcpServer() {
         "Refused": z.string(),
         "Offered Live Agent": z.string(),
         "Pass/Fail": z.string(),
+	"Flagged Risk": z.string(),
         "Input Risk Level": z.string(),
         "Response Risk Level": z.string(),
         "Consistency Check": z.string(),
@@ -34,13 +35,33 @@ export function createMcpServer() {
         "Notes/Remediation Needed": z.string(),
       },
     },
-    async (input) => {
+        async (input) => {
       console.log("📥 MCP TOOL CALL RECEIVED: append_audit_log");
       console.log("Arguments:", input);
 
-      await appendAuditLogRow(input);
+      const flaggedRisk = (input["Flagged Risk"] || "").trim();
+      const passFail = (input["Pass/Fail"] || "").trim();
+      const responseRiskLevel = (input["Response Risk Level"] || "").trim();
 
-      console.log("✅ Row appended to Google Sheets");
+      const shouldLog =
+        flaggedRisk === "Yes" ||
+        passFail === "Fail" ||
+        responseRiskLevel === "Medium" ||
+        responseRiskLevel === "High";
+
+      console.log("📊 Logging decision:", {
+        flaggedRisk,
+        passFail,
+        responseRiskLevel,
+        shouldLog,
+      });
+
+      if (shouldLog) {
+        await appendAuditLogRow(input);
+        console.log("✅ Row appended to Google Sheets");
+      } else {
+        console.log("⏭️ Skipped Google Sheets logging");
+      }
 
       return {
         content: [],
