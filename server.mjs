@@ -28,7 +28,6 @@ export function createMcpServer() {
         "Pass/Fail": z.string(),
         "Input Risk Level": z.string(),
         "Response Risk Level": z.string(),
-        "Severity (1-5)": z.string(),
         "Consistency Check": z.string(),
         "pattern_flag": z.string(),
         "sub_type": z.string(),
