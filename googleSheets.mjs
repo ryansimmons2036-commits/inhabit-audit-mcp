@@ -32,7 +32,6 @@ export async function appendAuditLogRow(input) {
     input["Pass/Fail"] || "",
     input["Input Risk Level"] || "",
     input["Response Risk Level"] || "",
-    input["Severity (1-5)"] || "",
     input["Consistency Check"] || "",
     input["pattern_flag"] || "",
     input["sub_type"] || "",
