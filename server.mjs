@@ -21,7 +21,7 @@ export function createMcpServer() {
         "Prompt Used": z.string(),
         "Expected Behavior": z.string(),
         "Assistant Response": z.string(),
-        "Evaluator Output": z.string(),
+        "Evaluator Output": z.string().optional(),
         "Suggested Rewrite": z.string(),
         "Refused": z.string(),
         "Offered Live Agent": z.string(),
@@ -39,36 +39,16 @@ export function createMcpServer() {
       console.log("📥 MCP TOOL CALL RECEIVED: append_audit_log");
       console.log("Arguments:", input);
 
-      const flaggedRisk = (input["Flagged Risk"] || "").trim();
-      const passFail = (input["Pass/Fail"] || "").trim();
-      const responseRiskLevel = (input["Response Risk Level"] || "").trim();
-
-      const shouldLog =
-        flaggedRisk === "Yes" ||
-        passFail === "Fail" ||
-        responseRiskLevel === "Medium" ||
-        responseRiskLevel === "High";
-
-      console.log("📊 Logging decision:", {
-        flaggedRisk,
-        passFail,
-        responseRiskLevel,
-        shouldLog,
-      });
-
-      if (shouldLog) {
-        await appendAuditLogRow(input);
-        console.log("✅ Row appended to Google Sheets");
-      } else {
-        console.log("⏭️ Skipped Google Sheets logging");
-      }
+      await appendAuditLogRow(input);
+      console.log("✅ Row appended to Google Sheets");
 
       return {
         content: [],
         structuredContent: {
           functionCallResponse: {
             status: "success",
-            message: "Audit log processed",
+            logged: true,
+            reason: "Direct append",
           },
           rerunLLM: false,
           threadParams: {},
@@ -84,7 +64,7 @@ export function createMcpServer() {
     "process_risk_result",
     {
       description:
-        "Evaluate logging eligibility for a completed risk result and log to Google Sheets only if the case meets the threshold",
+        "Log every completed risk result to Google Sheets",
       inputSchema: {
         "Test ID": z.string(),
         "Cluster #": z.string(),
@@ -112,54 +92,17 @@ export function createMcpServer() {
       console.log("📥 MCP TOOL CALL RECEIVED: process_risk_result");
       console.log("Arguments:", input);
 
-      const flaggedRisk = (input["Flagged Risk"] || "").trim();
-      const passFail = (input["Pass/Fail"] || "").trim();
-      const responseRiskLevel = (input["Response Risk Level"] || "").trim();
-
-      const shouldLog =
-        flaggedRisk === "Yes" ||
-        passFail === "Fail" ||
-        responseRiskLevel === "Medium" ||
-        responseRiskLevel === "High";
-
-      let reason = "Safe pass case";
-
-      if (flaggedRisk === "Yes") {
-        reason = 'Flagged Risk = "Yes"';
-      } else if (passFail === "Fail") {
-        reason = 'Pass/Fail = "Fail"';
-      } else if (responseRiskLevel === "Medium") {
-        reason = 'Response Risk Level = "Medium"';
-      } else if (responseRiskLevel === "High") {
-        reason = 'Response Risk Level = "High"';
-      }
-
-      console.log("📊 Orchestration decision:", {
-        flaggedRisk,
-        passFail,
-        responseRiskLevel,
-        shouldLog,
-        reason,
-      });
-
-      let logged = false;
-
-      if (shouldLog) {
-        await appendAuditLogRow(input);
-        logged = true;
-        console.log("✅ Row appended to Google Sheets from process_risk_result");
-      } else {
-        console.log("⏭️ Skipped Google Sheets logging from process_risk_result");
-      }
+      await appendAuditLogRow(input);
+      console.log("✅ Row appended to Google Sheets from process_risk_result");
 
       return {
         content: [],
         structuredContent: {
           functionCallResponse: {
             status: "success",
-            shouldLog,
-            logged,
-            reason,
+            shouldLog: true,
+            logged: true,
+            reason: "Logged every test case",
           },
           rerunLLM: false,
           threadParams: {},
