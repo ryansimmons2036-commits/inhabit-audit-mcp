@@ -16,7 +16,7 @@ app.get("/", (_req, res) => {
   });
 });
 
-// MCP route
+// MCP route (DO NOT TOUCH)
 app.post("/mcp", async (req, res) => {
   const server = createMcpServer();
   const transport = new StreamableHTTPServerTransport({
@@ -29,13 +29,8 @@ app.post("/mcp", async (req, res) => {
     if (cleaned) return;
     cleaned = true;
 
-    try {
-      await transport.close();
-    } catch (error) {}
-
-    try {
-      await server.close();
-    } catch (error) {}
+    try { await transport.close(); } catch {}
+    try { await server.close(); } catch {}
   };
 
   res.on("finish", cleanup);
@@ -59,11 +54,44 @@ app.post("/mcp", async (req, res) => {
   }
 });
 
-// Logging route (THIS IS THE IMPORTANT ONE)
+// ✅ FIXED logging route
 app.post("/log-risk-test", async (req, res) => {
   try {
     console.log("📝 Logging risk test...");
     console.log("📦 Incoming payload:", JSON.stringify(req.body, null, 2));
+
+    const p = req.body || {};
+
+    const mcpPayload = {
+      jsonrpc: "2.0",
+      id: "log-risk-1",
+      method: "tools/call",
+      params: {
+        name: "process_risk_result",
+        arguments: {
+          "Test ID": p["Test ID"] || "",
+          "Cluster #": p["Cluster #"] || p["Primary Cluster #"] || "",
+          "Cluster Name": p["Cluster Name"] || p["Primary Cluster Name"] || "",
+          "Tags": Array.isArray(p["Tags"]) ? p["Tags"].join(", ") : (p["Tags"] || ""),
+          "Category": p["Category"] || "",
+          "Prompt Used": p["Prompt Used"] || "",
+          "Expected Behavior": p["Expected Behavior"] || "",
+          "Assistant Response": p["Assistant Response"] || "",
+          "Evaluator Output": p["Evaluator Output"] || "",
+          "Suggested Rewrite": p["Suggested Rewrite"] || "",
+          "Refused": p["Refused"] || "",
+          "Offered Live Agent": p["Offered Live Agent"] || "",
+          "Pass/Fail": p["Pass/Fail"] || "",
+          "Flagged Risk": p["Flagged Risk"] || "",
+          "Input Risk Level": p["Input Risk Level"] || "",
+          "Response Risk Level": p["Response Risk Level"] || "",
+          "Consistency Check": p["Consistency Check"] || "",
+          "pattern_flag": p["Pattern Flag"] || "",
+          "sub_type": p["Sub Type"] || "",
+          "Notes/Remediation Needed": p["Notes/Remediation Needed"] || ""
+        },
+      },
+    };
 
     const mcpResponse = await fetch(`http://localhost:${PORT}/mcp`, {
       method: "POST",
@@ -71,15 +99,7 @@ app.post("/log-risk-test", async (req, res) => {
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
       },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: "log-risk-1",
-        method: "tools/call",
-        params: {
-          name: "process_risk_result",
-          arguments: req.body,
-        },
-      }),
+      body: JSON.stringify(mcpPayload),
     });
 
     const mcpText = await mcpResponse.text();
@@ -88,6 +108,7 @@ app.post("/log-risk-test", async (req, res) => {
     return res.status(200).json({
       status: "logged",
     });
+
   } catch (error) {
     console.error("❌ /log-risk-test error:", error);
 
