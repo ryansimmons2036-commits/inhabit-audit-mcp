@@ -59,7 +59,7 @@ app.post("/mcp", async (req, res) => {
   }
 });
 
-// Secondary logic helpers for stable derived fields
+// Helpers
 function toText(value) {
   return String(value || "").trim();
 }
@@ -127,37 +127,6 @@ function deriveTags(payload) {
   return Array.from(tags).join(", ");
 }
 
-function deriveEvaluatorOutput(payload) {
-  const existing = toText(payload["Evaluator Output"]);
-  if (existing) return existing;
-
-  const passFail = toText(payload["Pass/Fail"]) || "Unknown";
-  const inputRisk = toText(payload["Input Risk Level"]) || "Unknown";
-  const responseRisk = toText(payload["Response Risk Level"]) || "Unknown";
-  const consistency = toText(payload["Consistency Check"]);
-
-  if (consistency) {
-    return `Pass/Fail: ${passFail}; Input Risk: ${inputRisk}; Response Risk: ${responseRisk}; Consistency: ${consistency}`;
-  }
-
-  return `Pass/Fail: ${passFail}; Input Risk: ${inputRisk}; Response Risk: ${responseRisk}`;
-}
-
-function deriveSuggestedRewrite(payload) {
-  const existing = toText(payload["Suggested Rewrite"]);
-  if (existing) return existing;
-
-  const passFail = toText(payload["Pass/Fail"]).toLowerCase();
-  if (passFail === "pass") return "No rewrite needed";
-
-  const expected = toText(payload["Expected Behavior"]);
-  if (expected) {
-    return `Rewrite to align with expected behavior: ${expected}`;
-  }
-
-  return "Rewrite recommended but not provided";
-}
-
 // Logging route
 app.post("/log-risk-test", async (req, res) => {
   try {
@@ -165,10 +134,21 @@ app.post("/log-risk-test", async (req, res) => {
     console.log("📦 Incoming payload:", JSON.stringify(req.body, null, 2));
 
     const p = req.body || {};
+    const isEvaluation = !!toText(p["Pass/Fail"]);
 
     const finalTags = deriveTags(p);
-    const finalEvaluatorOutput = deriveEvaluatorOutput(p);
-    const finalSuggestedRewrite = deriveSuggestedRewrite(p);
+    const finalEvaluatorOutput = isEvaluation ? toText(p["Evaluator Output"]) : "";
+    const finalSuggestedRewrite = isEvaluation ? toText(p["Suggested Rewrite"]) : "";
+    const finalRefused = isEvaluation ? toText(p["Refused"]) : "";
+    const finalOfferedLiveAgent = isEvaluation ? toText(p["Offered Live Agent"]) : "";
+    const finalPassFail = isEvaluation ? toText(p["Pass/Fail"]) : "";
+    const finalFlaggedRisk = isEvaluation ? toText(p["Flagged Risk"]) : "";
+    const finalInputRiskLevel = isEvaluation ? toText(p["Input Risk Level"]) : "";
+    const finalResponseRiskLevel = isEvaluation ? toText(p["Response Risk Level"]) : "";
+    const finalConsistencyCheck = isEvaluation ? toText(p["Consistency Check"]) : "";
+    const finalPatternFlag = isEvaluation ? toText(p["Pattern Flag"]) : "";
+    const finalSubType = isEvaluation ? toText(p["Sub Type"]) : "";
+    const finalNotes = isEvaluation ? toText(p["Notes/Remediation Needed"]) : "";
 
     const mcpPayload = {
       jsonrpc: "2.0",
@@ -187,16 +167,16 @@ app.post("/log-risk-test", async (req, res) => {
           "Assistant Response": toText(p["Assistant Response"]),
           "Evaluator Output": finalEvaluatorOutput,
           "Suggested Rewrite": finalSuggestedRewrite,
-          "Refused": toText(p["Refused"]),
-          "Offered Live Agent": toText(p["Offered Live Agent"]),
-          "Pass/Fail": toText(p["Pass/Fail"]),
-          "Flagged Risk": toText(p["Flagged Risk"]),
-          "Input Risk Level": toText(p["Input Risk Level"]),
-          "Response Risk Level": toText(p["Response Risk Level"]),
-          "Consistency Check": toText(p["Consistency Check"]),
-          "pattern_flag": toText(p["Pattern Flag"]),
-          "sub_type": toText(p["Sub Type"]),
-          "Notes/Remediation Needed": toText(p["Notes/Remediation Needed"]),
+          "Refused": finalRefused,
+          "Offered Live Agent": finalOfferedLiveAgent,
+          "Pass/Fail": finalPassFail,
+          "Flagged Risk": finalFlaggedRisk,
+          "Input Risk Level": finalInputRiskLevel,
+          "Response Risk Level": finalResponseRiskLevel,
+          "Consistency Check": finalConsistencyCheck,
+          "pattern_flag": finalPatternFlag,
+          "sub_type": finalSubType,
+          "Notes/Remediation Needed": finalNotes,
         },
       },
     };
@@ -215,6 +195,7 @@ app.post("/log-risk-test", async (req, res) => {
 
     return res.status(200).json({
       status: "logged",
+      phase: isEvaluation ? "evaluation" : "conversation_log",
     });
   } catch (error) {
     console.error("❌ /log-risk-test error:", error);
