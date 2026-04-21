@@ -22,26 +22,26 @@ export async function appendConversationLogRow(input) {
   const timestamp = chicagoTimestamp();
 
   const row = [
-    timestamp, // A Timestamp
-    input["Test ID"] || "", // B Test ID
-    input["Cluster #"] || "", // C Cluster #
-    input["Cluster Name"] || "", // D Cluster Name
-    input["Tags"] || "", // E Tags
-    input["Category"] || "", // F Category
-    input["Prompt Used"] || "", // G Prompt Used
-    "", // H Expected Behavior
-    input["Assistant Response"] || "", // I Assistant Response
-    "", // J Evaluator Output
-    "", // K Suggested Rewrite
-    "", // L Refused
-    "", // M Offered Live Agent
-    "", // N Pass/Fail
-    "", // O Input Risk Level
-    "", // P Response Risk Level
-    "", // Q Consistency Check
-    "", // R pattern_flag
-    "", // S sub_type
-    "", // T Notes/Remediation Needed
+    timestamp,
+    input["Test ID"] || "",
+    input["Cluster #"] || "",
+    input["Cluster Name"] || "",
+    input["Tags"] || "",
+    input["Category"] || "",
+    input["Prompt Used"] || "",
+    "",
+    input["Assistant Response"] || "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
   ];
 
   console.log("🕒 Conversation timestamp:", timestamp);
@@ -99,23 +99,25 @@ export async function updateEvaluationFieldsByTestId(testId, input) {
 
   const updateValues = [
     [
-      input["Expected Behavior"] || "", // H
-      existingAssistantResponse, // I preserve existing Assistant Response
-      input["Evaluator Output"] || "", // J
-      input["Suggested Rewrite"] || "", // K
-      input["Refused"] || "", // L
-      input["Offered Live Agent"] || "", // M
-      input["Pass/Fail"] || "", // N
-      input["Input Risk Level"] || "", // O
-      input["Response Risk Level"] || "", // P
-      input["Consistency Check"] || "", // Q
-      input["pattern_flag"] || "", // R
-      input["sub_type"] || "", // S
-      input["Notes/Remediation Needed"] || "", // T
+      input["Expected Behavior"] || "",
+      existingAssistantResponse,
+      input["Evaluator Output"] || "",
+      input["Suggested Rewrite"] || "",
+      input["Refused"] || "",
+      input["Offered Live Agent"] || "",
+      input["Pass/Fail"] || "",
+      input["Input Risk Level"] || "",
+      input["Response Risk Level"] || "",
+      input["Consistency Check"] || "",
+      input["pattern_flag"] || "",
+      input["sub_type"] || "",
+      input["Notes/Remediation Needed"] || "",
     ],
   ];
 
-  console.log(`🛠 Updating evaluation fields for Test ID ${testId} at row ${rowNumber}`);
+  console.log(
+    `🛠 Updating evaluation fields for Test ID ${testId} at row ${rowNumber}`
+  );
   console.log("📝 Evaluation values being written:", updateValues);
 
   await sheets.spreadsheets.values.update({
@@ -132,4 +134,4 @@ export async function updateEvaluationFieldsByTestId(testId, input) {
     rowNumber,
     updated: true,
   };
-}on
+}
