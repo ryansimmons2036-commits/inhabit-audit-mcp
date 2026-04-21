@@ -75,8 +75,8 @@ function deriveTags(payload) {
   );
   const category = toText(payload["Category"]);
   const prompt = toText(payload["Prompt Used"]).toLowerCase();
-  const subType = toText(payload["Sub Type"]);
-  const patternFlag = toText(payload["Pattern Flag"]);
+  const subType = toText(payload["Sub Type"] || payload["sub_type"]);
+  const patternFlag = toText(payload["Pattern Flag"] || payload["pattern_flag"]);
 
   const tags = new Set();
 

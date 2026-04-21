@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   appendConversationLogRow,
+  getConversationRecordByTestId,
   updateEvaluationFieldsByTestId,
 } from "./googleSheets.mjs";
 
@@ -41,6 +42,41 @@ export function createMcpServer() {
             phase: "conversation_log",
             logged: true,
             result,
+          },
+          rerunLLM: false,
+          threadParams: {},
+          debug: {},
+          enhancedContent: null,
+          additionalTokens: [],
+        },
+      };
+    }
+  );
+
+  server.registerTool(
+    "get_conversation_record",
+    {
+      description:
+        "Retrieve a logged conversation record from Google Sheets by Test ID so the evaluator can read Prompt Used and Assistant Response",
+      inputSchema: {
+        "Test ID": z.string(),
+      },
+    },
+    async (input) => {
+      console.log("📥 MCP TOOL CALL RECEIVED: get_conversation_record");
+      console.log("Arguments:", input);
+
+      const record = await getConversationRecordByTestId(input["Test ID"]);
+      console.log("✅ Conversation record retrieved from Google Sheets");
+
+      return {
+        content: [],
+        structuredContent: {
+          functionCallResponse: {
+            status: "success",
+            phase: "conversation_retrieval",
+            found: true,
+            record,
           },
           rerunLLM: false,
           threadParams: {},

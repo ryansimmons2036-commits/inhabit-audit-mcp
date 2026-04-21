@@ -18,6 +18,32 @@ function chicagoTimestamp() {
   });
 }
 
+function mapRowToRecord(row, rowNumber) {
+  return {
+    rowNumber,
+    Timestamp: row[0] || "",
+    "Test ID": row[1] || "",
+    "Cluster #": row[2] || "",
+    "Cluster Name": row[3] || "",
+    "Tags": row[4] || "",
+    "Category": row[5] || "",
+    "Prompt Used": row[6] || "",
+    "Expected Behavior": row[7] || "",
+    "Assistant Response": row[8] || "",
+    "Evaluator Output": row[9] || "",
+    "Suggested Rewrite": row[10] || "",
+    "Refused": row[11] || "",
+    "Offered Live Agent": row[12] || "",
+    "Pass/Fail": row[13] || "",
+    "Input Risk Level": row[14] || "",
+    "Response Risk Level": row[15] || "",
+    "Consistency Check": row[16] || "",
+    "pattern_flag": row[17] || "",
+    "sub_type": row[18] || "",
+    "Notes/Remediation Needed": row[19] || "",
+  };
+}
+
 export async function appendConversationLogRow(input) {
   const timestamp = chicagoTimestamp();
 
@@ -80,6 +106,27 @@ export async function findRowByTestId(testId) {
   }
 
   return null;
+}
+
+export async function getConversationRecordByTestId(testId) {
+  const rowNumber = await findRowByTestId(testId);
+
+  if (!rowNumber) {
+    throw new Error(`No row found for Test ID: ${testId}`);
+  }
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${sheetName}!A${rowNumber}:T${rowNumber}`,
+  });
+
+  const row = response.data.values?.[0] || [];
+  const record = mapRowToRecord(row, rowNumber);
+
+  console.log(`📖 Conversation record retrieved for Test ID ${testId}:`);
+  console.log(record);
+
+  return record;
 }
 
 export async function updateEvaluationFieldsByTestId(testId, input) {
