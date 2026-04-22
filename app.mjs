@@ -2,17 +2,27 @@ import "dotenv/config";
 import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpServer } from "./server.mjs";
+import {
+  appendConversationLogRow,
+  getConversationRecordByTestId,
+  updateEvaluationFieldsByTestId,
+} from "./googleSheets.mjs";
 
 const PORT = process.env.PORT || 3000;
+const AUTO_EVALUATE_ON_LOG = process.env.AUTO_EVALUATE_ON_LOG !== "false";
+const EVALUATOR_URL = process.env.EVALUATOR_URL || "";
+const EVALUATOR_API_KEY = process.env.EVALUATOR_API_KEY || "";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 
 // Health check
 app.get("/", (_req, res) => {
   res.status(200).json({
     status: "ok",
     message: "Inhabit audit MCP server is running",
+    autoEvaluateOnLog: AUTO_EVALUATE_ON_LOG,
+    evaluatorConfigured: Boolean(EVALUATOR_URL),
   });
 });
 
@@ -123,6 +133,119 @@ function deriveTags(payload) {
   return Array.from(tags).join(", ");
 }
 
+function normalizeEvaluationPayload(testId, evaluation) {
+  const source = evaluation?.evaluation || evaluation || {};
+
+  return {
+    "Test ID": testId,
+    "Expected Behavior": toText(
+      source["Expected Behavior"] ?? source.expected_behavior
+    ),
+    "Evaluator Output": toText(
+      source["Evaluator Output"] ?? source.evaluator_output
+    ),
+    "Suggested Rewrite": toText(
+      source["Suggested Rewrite"] ?? source.suggested_rewrite
+    ),
+    "Refused": toText(source["Refused"] ?? source.refused),
+    "Offered Live Agent": toText(
+      source["Offered Live Agent"] ?? source.offered_live_agent
+    ),
+    "Pass/Fail": toText(source["Pass/Fail"] ?? source.pass_fail),
+    "Input Risk Level": toText(
+      source["Input Risk Level"] ?? source.input_risk_level
+    ),
+    "Response Risk Level": toText(
+      source["Response Risk Level"] ?? source.response_risk_level
+    ),
+    "Consistency Check": toText(
+      source["Consistency Check"] ?? source.consistency_check
+    ),
+    pattern_flag: toText(source["pattern_flag"] ?? source["Pattern Flag"]),
+    sub_type: toText(source["sub_type"] ?? source["Sub Type"]),
+    "Notes/Remediation Needed": toText(
+      source["Notes/Remediation Needed"] ?? source.notes_remediation_needed
+    ),
+  };
+}
+
+async function callEvaluator(record) {
+  if (!EVALUATOR_URL) {
+    throw new Error(
+      "EVALUATOR_URL is not configured. Add your evaluator endpoint URL in Render environment variables."
+    );
+  }
+
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  if (EVALUATOR_API_KEY) {
+    headers.Authorization = `Bearer ${EVALUATOR_API_KEY}`;
+  }
+
+  const payload = {
+    "Test ID": record["Test ID"],
+    "Cluster #": record["Cluster #"],
+    "Cluster Name": record["Cluster Name"],
+    Tags: record["Tags"],
+    Category: record["Category"],
+    "Prompt Used": record["Prompt Used"],
+    "Assistant Response": record["Assistant Response"],
+  };
+
+  console.log("🧠 Sending record to evaluator endpoint...");
+  console.log(JSON.stringify(payload, null, 2));
+
+  const response = await fetch(EVALUATOR_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const rawText = await response.text();
+  console.log("🧠 Evaluator raw response:", rawText);
+
+  if (!response.ok) {
+    throw new Error(
+      `Evaluator request failed with status ${response.status}: ${rawText}`
+    );
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    throw new Error(
+      "Evaluator response was not valid JSON. The evaluator endpoint must return JSON."
+    );
+  }
+
+  return parsed;
+}
+
+async function runAutoEvaluation(testId) {
+  console.log(`🔎 Retrieving conversation record for Test ID ${testId}...`);
+  const record = await getConversationRecordByTestId(testId);
+
+  console.log("✅ Conversation record retrieved:");
+  console.log(record);
+
+  const evaluatorResponse = await callEvaluator(record);
+  const normalized = normalizeEvaluationPayload(testId, evaluatorResponse);
+
+  console.log("📝 Normalized evaluation payload:");
+  console.log(normalized);
+
+  await updateEvaluationFieldsByTestId(testId, normalized);
+
+  return {
+    testId,
+    evaluated: true,
+  };
+}
+
 // Main logging/evaluation route
 app.post("/log-risk-test", async (req, res) => {
   try {
@@ -130,69 +253,96 @@ app.post("/log-risk-test", async (req, res) => {
     console.log(JSON.stringify(req.body, null, 2));
 
     const p = req.body || {};
-    const isEvaluation = !!toText(p["Pass/Fail"]);
+    const isDirectEvaluationUpdate = !!toText(p["Pass/Fail"]);
+    const testId = toText(p["Test ID"]);
 
-    let toolName;
-    let args;
-
-    if (isEvaluation) {
-      toolName = "update_evaluation_record";
-      args = {
-        "Test ID": toText(p["Test ID"]),
-        "Expected Behavior": toText(p["Expected Behavior"]),
-        "Evaluator Output": toText(p["Evaluator Output"]),
-        "Suggested Rewrite": toText(p["Suggested Rewrite"]),
-        "Refused": toText(p["Refused"]),
-        "Offered Live Agent": toText(p["Offered Live Agent"]),
-        "Pass/Fail": toText(p["Pass/Fail"]),
-        "Input Risk Level": toText(p["Input Risk Level"]),
-        "Response Risk Level": toText(p["Response Risk Level"]),
-        "Consistency Check": toText(p["Consistency Check"]),
-        "pattern_flag": toText(p["Pattern Flag"] || p["pattern_flag"]),
-        "sub_type": toText(p["Sub Type"] || p["sub_type"]),
-        "Notes/Remediation Needed": toText(p["Notes/Remediation Needed"]),
-      };
-    } else {
-      toolName = "log_conversation_record";
-      args = {
-        "Test ID": toText(p["Test ID"]),
-        "Cluster #": toText(p["Cluster #"] || p["Primary Cluster #"]),
-        "Cluster Name": toText(p["Cluster Name"] || p["Primary Cluster Name"]),
-        "Tags": deriveTags(p),
-        "Category": toText(p["Category"]),
-        "Prompt Used": toText(p["Prompt Used"]),
-        "Assistant Response": toText(p["Assistant Response"]),
-      };
+    if (!testId) {
+      return res.status(400).json({
+        error: "Missing Test ID",
+      });
     }
 
-    const mcpPayload = {
-      jsonrpc: "2.0",
-      id: "log-risk-1",
-      method: "tools/call",
-      params: {
-        name: toolName,
-        arguments: args,
-      },
+    // Direct evaluation update path (still supported)
+    if (isDirectEvaluationUpdate) {
+      const evaluationPayload = normalizeEvaluationPayload(testId, p);
+      const updateResult = await updateEvaluationFieldsByTestId(
+        testId,
+        evaluationPayload
+      );
+
+      return res.status(200).json({
+        status: "updated",
+        phase: "evaluation",
+        result: updateResult,
+      });
+    }
+
+    // Conversation logging path
+    const logPayload = {
+      "Test ID": testId,
+      "Cluster #": toText(p["Cluster #"] || p["Primary Cluster #"]),
+      "Cluster Name": toText(
+        p["Cluster Name"] || p["Primary Cluster Name"]
+      ),
+      Tags: deriveTags(p),
+      Category: toText(p["Category"]),
+      "Prompt Used": toText(p["Prompt Used"]),
+      "Assistant Response": toText(p["Assistant Response"]),
     };
 
-    const mcpResponse = await fetch(`http://localhost:${PORT}/mcp`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-      },
-      body: JSON.stringify(mcpPayload),
-    });
+    const logResult = await appendConversationLogRow(logPayload);
 
-    const mcpText = await mcpResponse.text();
-    console.log("🧰 MCP response:", mcpText);
+    // Optional auto-evaluation right after logging
+    let evaluationResult = null;
+    let evaluationError = null;
+
+    if (AUTO_EVALUATE_ON_LOG) {
+      try {
+        evaluationResult = await runAutoEvaluation(testId);
+      } catch (error) {
+        evaluationError = error.message;
+        console.error("❌ Auto-evaluation failed:", error);
+      }
+    }
 
     return res.status(200).json({
       status: "logged",
-      phase: isEvaluation ? "evaluation" : "conversation_log",
+      phase: "conversation_log",
+      result: logResult,
+      autoEvaluation: AUTO_EVALUATE_ON_LOG
+        ? evaluationError
+          ? { success: false, error: evaluationError }
+          : { success: true, result: evaluationResult }
+        : { success: false, skipped: true },
     });
   } catch (error) {
     console.error("❌ /log-risk-test error:", error);
+
+    return res.status(500).json({
+      error: error.message,
+    });
+  }
+});
+
+// Manual backend-triggered evaluation route
+app.post("/evaluate-test-id", async (req, res) => {
+  try {
+    const testId = toText(req.body?.["Test ID"] || req.body?.testId);
+
+    if (!testId) {
+      return res.status(400).json({
+        error: "Missing Test ID",
+      });
+    }
+
+    const result = await runAutoEvaluation(testId);
+
+    return res.status(200).json({
+      status: "evaluated",
+      result,
+    });
+  } catch (error) {
+    console.error("❌ /evaluate-test-id error:", error);
 
     return res.status(500).json({
       error: error.message,

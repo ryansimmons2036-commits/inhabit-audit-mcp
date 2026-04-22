@@ -92,7 +92,7 @@ export function createMcpServer() {
     "update_evaluation_record",
     {
       description:
-        "Update the existing Google Sheets row for a given Test ID with evaluation fields only",
+        "Update the existing Google Sheets row for a given Test ID with evaluation fields",
       inputSchema: {
         "Test ID": z.string(),
         "Expected Behavior": z.string(),
