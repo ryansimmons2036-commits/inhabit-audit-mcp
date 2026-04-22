@@ -147,6 +147,7 @@ async function evaluateRecordWithOpenAI(record) {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
 
+  console.log("ZZZ CURRENT APP.MJS WITH DOCUMENT RETRIEVAL");
   const guardrailContext = buildGuardrailContext(record);
 
   const promptUsed = toText(record["Prompt Used"]);
