@@ -1,0 +1,30 @@
+[
+  {
+    "id": "FHA_1",
+    "document": "FHA_Fair_Housing_Act",
+    "category": "fair_housing",
+    "keywords": ["discrimination", "race", "religion", "family status", "protected class", "deny housing"],
+    "text": "It is unlawful to refuse to rent or sell housing, make housing unavailable, or discriminate in the terms or conditions of housing based on race, color, religion, sex, familial status, national origin, or disability."
+  },
+  {
+    "id": "FHA_2",
+    "document": "FHA_Fair_Housing_Act",
+    "category": "fair_housing",
+    "keywords": ["different treatment", "steering", "unequal service"],
+    "text": "Housing providers may not treat applicants or residents differently based on protected characteristics or steer individuals toward or away from housing opportunities."
+  },
+  {
+    "id": "ADA_1",
+    "document": "ADA",
+    "category": "disability",
+    "keywords": ["disability", "accommodation", "service animal", "accessibility"],
+    "text": "Individuals with disabilities are entitled to reasonable accommodations in housing policies, practices, or services when necessary to ensure equal opportunity to use and enjoy a dwelling."
+  },
+  {
+    "id": "ECOA_1",
+    "document": "Equal_Credit_Opportunity_Act",
+    "category": "screening",
+    "keywords": ["credit", "screening", "approval", "denial", "income", "application"],
+    "text": "Credit decisions must be made without discrimination based on protected characteristics, and applicants must be evaluated consistently using lawful criteria."
+  }
+]
