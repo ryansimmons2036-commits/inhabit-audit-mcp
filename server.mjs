@@ -9,7 +9,7 @@ import {
 import { buildGuardrailContext } from "./guardrails.mjs";
 import { retrieveRelevantSources } from "./retrieveSources.mjs";
 
-const AUTO_EVALUATE_ON_LOG = process.env.AUTO_EVALUATE_ON_LOG !== "false";
+const AUTO_EVALUATE_ON_LOG = false;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
